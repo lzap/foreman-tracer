@@ -2,7 +2,7 @@
 
 Usage:
 
-    yum -y install systemtap systemtap-runtime kernel-debuginfo-`uname -r` kernel-debuginfo-common-`uname -i`-`uname -r` kernel-devel-`uname -r`
+    yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
 
     ./foreman-tracer > trace.log
 
