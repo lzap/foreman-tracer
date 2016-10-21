@@ -1,5 +1,10 @@
 # Foreman SystemTap tracing utility
 
+Requirements:
+
+* Foreman or Satellite
+* RHEL 7.2 (7.0 should work, 6.x will not work)
+
 Usage:
 
     yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
