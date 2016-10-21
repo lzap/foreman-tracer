@@ -1,0 +1,18 @@
+#!/usr/bin/bash
+
+FOREMAN_PID=$(ps axu | grep "Passenger RackApp: /usr/share/foreman" | grep -E '^foreman' | awk '{print $2}')
+
+scl enable rh-ruby22 -- stap - -x $FOREMAN_PID <<EOSTAP
+probe ruby.method.entry, ruby.cmethod.entry
+{
+        if (file =~ "^/usr/share/foreman" && classname !~ "^(Foreman::Logging|Foreman::Gettext|Foreman::ThreadSession|Kernel|String|Symbol|NilClass|Time|Array|Hash|Enumerable|Fixnum|Integer|Float|Regexp|IO|Module|Class|Thread|Mutex)") {
+                printf("%s.%s\n", classname, methodname)
+        }
+}
+probe ruby.raise
+{
+        if (file =~ "^/usr/share/foreman") {
+                printf("EXCEPTION %s (%s:%d)\n", classname, file, line)
+        }
+}
+EOSTAP
