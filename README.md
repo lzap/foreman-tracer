@@ -40,9 +40,11 @@ created from cron). In that case, provide PID of the process:
 
     foreman-tracer 13513 > trace.log
 
-Note that some classes are filtered out for visibility (e.g. Logger etc).
+Note that some classes are filtered out for visibility (e.g. Logger etc). Also
+only sources from /usr/share/foreman* are taken into account (all the rest
+like rubygems and other dependencies are ignored from all tracing).
 
-### Top method calls 
+### Top method calls
 
 To see top method calls "live" do:
 
@@ -51,6 +53,11 @@ To see top method calls "live" do:
 This works with proxy option or arbitrary Ruby PID as well. Screen refreshes
 every second and all call counters reset every five minutes. Use Ctrl+C to
 stop the live view.
+
+Keep in mind that all "live" probes do only show counters from files in
+/usr/share/foreman* therefore when going after a memory leak or performance
+issue, it can be in Foreman dependency which is not shown here. It is possible
+to easily modify the script to ignore the prefix.
 
 ### Top object allocations
 
@@ -63,6 +70,14 @@ stop the live view.
 ### Top array or hash allocations per line
 
     foreman-tracer rails arrays
+
+This probe does not filter irrelevant classes like Logger.
+
+### Top string allocations per line
+
+    foreman-tracer rails strings
+
+This probe does not filter irrelevant classes like Logger.
 
 ## Exceptions
 
@@ -85,7 +100,7 @@ to list it's features (GET `/features`).
     ^CTracing ended at Tue Oct 25 08:54:23 EDT 2016
 
 The following example shows "top" utility tracing Foreman Rails process after
-few minutes of browsing in the WebUI (hosts list, host details, dashboard).
+few clicks in the WebUI (hosts list, host details, dashboard).
 
     # foreman-tracer rails calls
                                                                    FILENAME   LINE                    METHOD  CALLS
@@ -132,5 +147,18 @@ When SystemTap is no longer necessary, it is good idea to remove it as it
 installs GNU C/C++ compiler which can be considered as a security risk:
 
     yum remove systemtap* kernel-devel-`uname -r` gcc cpp
+
+## Troubleshooting
+
+Ruby SCL is hardcoded in the script, some older version of Foreman (or
+Satellite) have different Foreman/Ruby SCL. This can be determined with:
+
+# grep Ruby /etc/httpd/conf.d/05-foreman.conf
+PassengerRuby /usr/bin/tfm-ruby
+
+## TODO
+
+* Strip "/usr/share/foreman" from FILENAME column to make it narrower
+* Automatically detect Ruby SCL
 
 Have fun!
