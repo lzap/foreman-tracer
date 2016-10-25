@@ -1,18 +1,171 @@
 #!/usr/bin/bash
+#
+# Usage:
+# foreman-tracer [rails|proxy|PID_OF_RUBY_PROCESS] [trace|calls|objects|arrays]
 
-FOREMAN_PID=$(ps axu | grep "Passenger RackApp: /usr/share/foreman" | grep -E '^foreman' | awk '{print $2}')
+SCL="scl enable rh-ruby22 --"
+REFRESH=1000
+CLEAR=300000
+PERPAGE=25
+MAXENTRIES=15000
+IGNORED_CLASSES=(
+Foreman::Logging.*
+Foreman::Gettext.*
+Foreman::ThreadSession.*
+Proxy::Log.*
+Kernel
+String
+Symbol
+NilClass
+Time
+Array
+Hash
+Enumerable
+Fixnum
+Integer
+Rational
+Numeric
+Float
+Regexp
+Module
+Class
+Thread
+Mutex
+IO)
+IGNORED_DIR=/usr/share/foreman
+IGNORED_CLASSES_REGEXP=$(IFS=$'|'; echo "${IGNORED_CLASSES[*]}")
+export LC_ALL=C
 
-scl enable rh-ruby22 -- stap - -x $FOREMAN_PID <<EOSTAP
-probe ruby.method.entry, ruby.cmethod.entry
-{
-        if (file =~ "^/usr/share/foreman" && classname !~ "^(Foreman::Logging|Foreman::Gettext|Foreman::ThreadSession|Kernel|String|Symbol|NilClass|Time|Array|Hash|Enumerable|Fixnum|Integer|Float|Regexp|IO|Module|Class|Thread|Mutex)") {
-                printf("%s.%s\n", classname, methodname)
-        }
-}
-probe ruby.raise
-{
-        if (file =~ "^/usr/share/foreman") {
-                printf("EXCEPTION %s (%s:%d)\n", classname, file, line)
-        }
-}
+if [ "$1" == "proxy" ]; then
+  THE_PID=$(ps axu | grep /usr/share/foreman-proxy/bin/smart-proxy | grep -E '^foreman' | awk '{print $2}')
+elif [ "$1" == "rails" -o "$1" == "foreman" -o -z "$1" ]; then
+  THE_PID=$(ps axu | grep "Passenger RackApp: /usr/share/foreman" | grep -E '^foreman' | awk '{print $2}')
+else
+  THE_PID=$1
+fi
+
+if [ "$2" == "trace" -o -z "$2" ]; then
+  echo Tracing started at $(date)
+  tracing_end() {
+    echo Tracing ended at $(date)
+  }
+  trap tracing_end EXIT
+
+  $SCL stap - -x $THE_PID <<-EOSTAP
+  probe ruby.method.entry, ruby.cmethod.entry
+  {
+    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+      printf("%s.%s\n", classname, methodname)
+    }
+  }
+  probe ruby.raise
+  {
+    if (file =~ "^$IGNORED_DIR") {
+      printf("EXCEPTION %s (%s:%d)\n", classname, file, line)
+    }
+  }
 EOSTAP
+elif [ "$2" == "calls" ]; then
+  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  global fn_calls
+  probe ruby.method.entry, ruby.cmethod.entry
+  {
+    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+      fn_calls[file, methodname, line] <<< 1
+    }
+  }
+  probe timer.ms($REFRESH) {
+    ansi_clear_screen()
+    printf("%80s %6s %30s %6s\n", "FILENAME", "LINE", "METHOD", "CALLS")
+    foreach ([filename, funcname, lineno] in fn_calls- limit $PERPAGE) {
+      printf("%80s %6d %30s %6d\n", filename, lineno, funcname, @count(fn_calls[filename, funcname, lineno]))
+    }
+  }
+  probe timer.ms($CLEAR) {
+    delete fn_calls
+  }
+EOSTAPTOP
+elif [ "$2" == "strings" ]; then
+  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  global fn_calls
+  probe ruby.string.create
+  {
+    if (file =~ "^$IGNORED_DIR") {
+      fn_calls[file, line] <<< 1
+    }
+  }
+  probe timer.ms($REFRESH) {
+    ansi_clear_screen()
+    printf("%90s %6s %6s\n", "FILENAME", "LINE", "COUNT")
+    foreach ([filename, lineno] in fn_calls- limit $PERPAGE) {
+      printf("%90s %6d %6d\n", filename, lineno, @count(fn_calls[filename, lineno]))
+    }
+  }
+  probe timer.ms($CLEAR) {
+    delete fn_calls
+  }
+EOSTAPTOP
+elif [ "$2" == "arrays" ]; then
+  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  global fn_calls
+  probe ruby.array.create, ruby.hash.create
+  {
+    if (file =~ "^$IGNORED_DIR") {
+      fn_calls[file, line] <<< 1
+    }
+  }
+  probe timer.ms($REFRESH) {
+    ansi_clear_screen()
+    printf("%90s %6s %6s\n", "FILENAME", "LINE", "COUNT")
+    foreach ([filename, lineno] in fn_calls- limit $PERPAGE) {
+      printf("%90s %6d %6d\n", filename, lineno, @count(fn_calls[filename, lineno]))
+    }
+  }
+  probe timer.ms($CLEAR) {
+    delete fn_calls
+  }
+EOSTAPTOP
+elif [ "$2" == "objects" ]; then
+  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  global fn_calls
+  probe ruby.object.create
+  {
+    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+      fn_calls[file, classname, line] <<< 1
+    }
+  }
+  probe timer.ms($REFRESH) {
+    ansi_clear_screen()
+    printf("%70s %6s %40s %6s\n", "FILENAME", "LINE", "OBJECT", "COUNT")
+    foreach ([filename, obj, lineno] in fn_calls- limit $PERPAGE) {
+      printf("%70s %6d %40s %6d\n", filename, lineno, obj, @count(fn_calls[filename, obj, lineno]))
+    }
+  }
+  probe timer.ms($CLEAR) {
+    delete fn_calls
+  }
+EOSTAPTOP
+elif [ "$2" == "objects-total" ]; then
+  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  global fn_calls
+  probe ruby.object.create
+  {
+    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+      fn_calls[classname] <<< 1
+    }
+  }
+  probe timer.ms($REFRESH) {
+    ansi_clear_screen()
+    printf("%90s %8s\n", "OBJECT", "COUNT")
+    foreach ([obj] in fn_calls- limit $PERPAGE) {
+      printf("%90s %8d\n", obj, @count(fn_calls[obj]))
+    }
+  }
+  probe timer.ms($CLEAR) {
+    delete fn_calls
+  }
+EOSTAPTOP
+else
+  echo "Usage: $0 subject action"
+fi
+
