@@ -9,6 +9,8 @@
 
     yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
 
+### Tracing of calls
+
 Start tracing of the foreman Ruby on Rails (Passenger) application:
 
     foreman-tracer
@@ -27,13 +29,13 @@ interrupt (Control+C) as soon as possible to minimize the file size. The log
 can be compressed with bzip2/xz with high compression ratio, consider that
 before sending it to Foreman or Satellite support engineers.
 
-### Tracing foreman-proxy
+#### Tracing foreman-proxy
 
 To trace Foreman Proxy (also known as Smart Proxy or Capsule) do this:
 
     foreman-tracer proxy > trace.log
 
-### Tracing cron
+#### Tracing cron
 
 It is possible to trace arbitrary Ruby applications as well (e.g. rake tasks
 created from cron). In that case, provide PID of the process:
@@ -43,6 +45,20 @@ created from cron). In that case, provide PID of the process:
 Note that some classes are filtered out for visibility (e.g. Logger etc). Also
 only sources from /usr/share/foreman* are taken into account (all the rest
 like rubygems and other dependencies are ignored from all tracing).
+
+The script accepts second parameter which is "trace" if you don't provide it.
+Therefore this:
+
+    foreman-tracer
+
+is identical to this:
+
+    foreman-tracer rails trace
+
+#### Exceptions
+
+All exceptions are traced with `EXCEPTION` prefix so they can be easily
+searched. Ruby source filepath and line is also added to the output.
 
 ### Top method calls
 
@@ -80,11 +96,6 @@ This probe does not filter irrelevant classes like Logger.
     foreman-tracer rails strings [all]
 
 This probe does not filter irrelevant classes like Logger.
-
-## Exceptions
-
-All exceptions are traced with `EXCEPTION` prefix so they can be easily
-searched. Ruby source filepath and line is also added to the output.
 
 ## Example sessions
 
