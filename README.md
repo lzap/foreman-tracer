@@ -3,7 +3,7 @@
 ## Requirements
 
 * Foreman or Satellite
-* RHEL 7 (6.x will not work)
+* SystemTap enabled kernel (tested on CentOS 7/RHEL 7)
 
 ## Usage
 
@@ -43,7 +43,7 @@ created from cron). In that case, provide PID of the process:
     foreman-tracer 13513 > trace.log
 
 Note that some classes are filtered out for visibility (e.g. Logger etc). Also
-only sources from /usr/share/foreman* are taken into account (all the rest
+only sources from `/usr/share/foreman*` are taken into account (all the rest
 like rubygems and other dependencies are ignored from all tracing).
 
 The script accepts second parameter which is "trace" if you don't provide it.
@@ -166,8 +166,8 @@ installs GNU C/C++ compiler which can be considered as a security risk:
 Ruby SCL is hardcoded in the script, some older version of Foreman (or
 Satellite) have different Foreman/Ruby SCL. This can be determined with:
 
-# grep Ruby /etc/httpd/conf.d/05-foreman.conf
-PassengerRuby /usr/bin/tfm-ruby
+    # grep Ruby /etc/httpd/conf.d/05-foreman.conf
+    PassengerRuby /usr/bin/tfm-ruby
 
 The trace script can sometimes pick wrong Passenger process if there are more
 than one. In that case, specify PID manually or configure Passanger with just
@@ -175,7 +175,8 @@ one process for the tracing session.
 
 ## TODO
 
-* Strip "/usr/share/foreman" from FILENAME column to make it narrower
-* Automatically detect Ruby SCL
+* Get this working on Ubuntu/Debian (SCL ruby is hardcoded in the script)
+* Automatically detect Ruby SCL (solves above as well)
+* Getopt options, help page, man page
 
 Have fun!
