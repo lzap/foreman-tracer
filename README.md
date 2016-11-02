@@ -156,6 +156,10 @@ Satellite) have different Foreman/Ruby SCL. This can be determined with:
 # grep Ruby /etc/httpd/conf.d/05-foreman.conf
 PassengerRuby /usr/bin/tfm-ruby
 
+The trace script can sometimes pick wrong Passenger process if there are more
+than one. In that case, specify PID manually or configure Passanger with just
+one process for the tracing session.
+
 ## TODO
 
 * Strip "/usr/share/foreman" from FILENAME column to make it narrower
