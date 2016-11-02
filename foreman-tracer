@@ -49,6 +49,16 @@ else
   TRACE_ROOT=/usr/share/foreman
 fi
 
+read -r -d '' FUNCTIONS << EOFUNC
+  function fmtstr(str, len) {
+    if (strlen(str) > len) {
+      return substr(str, strlen(str) - len, len)
+    } else {
+      return str
+    }
+  }
+EOFUNC
+
 if [ "$2" == "trace" -o -z "$2" ]; then
   echo Tracing started at $(date)
   tracing_end() {
@@ -72,10 +82,11 @@ if [ "$2" == "trace" -o -z "$2" ]; then
 EOSTAP
 elif [ "$2" == "calls" ]; then
   $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+$FUNCTIONS
   global fn_calls
   probe ruby.method.entry, ruby.cmethod.entry
   {
-    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT") {
       fn_calls[file, methodname, line] <<< 1
     }
   }
@@ -83,7 +94,11 @@ elif [ "$2" == "calls" ]; then
     ansi_clear_screen()
     printf("%80s %6s %30s %6s\n", "FILENAME", "LINE", "METHOD", "CALLS")
     foreach ([filename, funcname, lineno] in fn_calls- limit $PERPAGE) {
-      printf("%80s %6d %30s %6d\n", filename, lineno, funcname, @count(fn_calls[filename, funcname, lineno]))
+      printf("%80s %6d %30s %6d\n",
+        fmtstr(filename, 80),
+        lineno,
+        fmtstr(funcname, 30),
+        @count(fn_calls[filename, funcname, lineno]))
     }
   }
   probe timer.ms($CLEAR) {
@@ -92,6 +107,7 @@ elif [ "$2" == "calls" ]; then
 EOSTAPTOP
 elif [ "$2" == "strings" ]; then
   $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+$FUNCTIONS
   global fn_calls
   probe ruby.string.create
   {
@@ -103,7 +119,10 @@ elif [ "$2" == "strings" ]; then
     ansi_clear_screen()
     printf("%90s %6s %6s\n", "FILENAME", "LINE", "COUNT")
     foreach ([filename, lineno] in fn_calls- limit $PERPAGE) {
-      printf("%90s %6d %6d\n", filename, lineno, @count(fn_calls[filename, lineno]))
+      printf("%90s %6d %6d\n",
+        fmtstr(filename, 90),
+        lineno,
+        @count(fn_calls[filename, lineno]))
     }
   }
   probe timer.ms($CLEAR) {
@@ -112,6 +131,7 @@ elif [ "$2" == "strings" ]; then
 EOSTAPTOP
 elif [ "$2" == "arrays" ]; then
   $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+$FUNCTIONS
   global fn_calls
   probe ruby.array.create, ruby.hash.create
   {
@@ -123,7 +143,10 @@ elif [ "$2" == "arrays" ]; then
     ansi_clear_screen()
     printf("%90s %6s %6s\n", "FILENAME", "LINE", "COUNT")
     foreach ([filename, lineno] in fn_calls- limit $PERPAGE) {
-      printf("%90s %6d %6d\n", filename, lineno, @count(fn_calls[filename, lineno]))
+      printf("%90s %6d %6d\n",
+        fmtstr(filename, 90),
+        lineno,
+        @count(fn_calls[filename, lineno]))
     }
   }
   probe timer.ms($CLEAR) {
@@ -132,10 +155,11 @@ elif [ "$2" == "arrays" ]; then
 EOSTAPTOP
 elif [ "$2" == "objects" ]; then
   $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+$FUNCTIONS
   global fn_calls
   probe ruby.object.create
   {
-    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT") {
       fn_calls[file, classname, line] <<< 1
     }
   }
@@ -143,7 +167,11 @@ elif [ "$2" == "objects" ]; then
     ansi_clear_screen()
     printf("%70s %6s %40s %6s\n", "FILENAME", "LINE", "OBJECT", "COUNT")
     foreach ([filename, obj, lineno] in fn_calls- limit $PERPAGE) {
-      printf("%70s %6d %40s %6d\n", filename, lineno, obj, @count(fn_calls[filename, obj, lineno]))
+      printf("%70s %6d %40s %6d\n",
+        fmtstr(filename, 70),
+        lineno,
+        fmtstr(obj, 40),
+        @count(fn_calls[filename, obj, lineno]))
     }
   }
   probe timer.ms($CLEAR) {
@@ -152,18 +180,21 @@ elif [ "$2" == "objects" ]; then
 EOSTAPTOP
 elif [ "$2" == "objects-total" ]; then
   $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+$FUNCTIONS
   global fn_calls
   probe ruby.object.create
   {
-    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT") {
       fn_calls[classname] <<< 1
     }
   }
   probe timer.ms($REFRESH) {
     ansi_clear_screen()
-    printf("%90s %8s\n", "OBJECT", "COUNT")
+    printf("%110s %8s\n", "OBJECT", "COUNT")
     foreach ([obj] in fn_calls- limit $PERPAGE) {
-      printf("%90s %8d\n", obj, @count(fn_calls[obj]))
+      printf("%110s %8d\n",
+        fmtstr(obj, 90),
+        @count(fn_calls[obj]))
     }
   }
   probe timer.ms($CLEAR) {
