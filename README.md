@@ -56,26 +56,28 @@ stop the live view.
 
 Keep in mind that all "live" probes do only show counters from files in
 /usr/share/foreman* therefore when going after a memory leak or performance
-issue, it can be in Foreman dependency which is not shown here. It is possible
-to easily modify the script to ignore the prefix.
+issue, it can be in Foreman dependency which is not shown here. To see
+counters for all namespaces, simply provide "all" option:
+
+    foreman-tracer rails calls all
 
 ### Top object allocations
 
-    foreman-tracer rails objects-total
+    foreman-tracer rails objects-total [all]
 
 ### Top object allocations per line
 
-    foreman-tracer rails objects
+    foreman-tracer rails objects [all]
 
 ### Top array or hash allocations per line
 
-    foreman-tracer rails arrays
+    foreman-tracer rails arrays [all]
 
 This probe does not filter irrelevant classes like Logger.
 
 ### Top string allocations per line
 
-    foreman-tracer rails strings
+    foreman-tracer rails strings [all]
 
 This probe does not filter irrelevant classes like Logger.
 
