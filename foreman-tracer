@@ -1,13 +1,10 @@
 #!/usr/bin/bash
-#
-# Usage:
-# foreman-tracer [rails|proxy|PID_OF_RUBY_PROCESS] [trace|calls|objects|arrays] [app|all]
 
 SCL="scl enable rh-ruby22 --"
 REFRESH=1000
 CLEAR=300000
-PERPAGE=25
-MAXENTRIES=15000
+PERPAGE=${4:-25}
+MAXENTRIES=100000
 IGNORED_CLASSES=(
 Foreman::Logging.*
 Foreman::Gettext.*
@@ -36,9 +33,9 @@ IGNORED_CLASSES_REGEXP=$(IFS=$'|'; echo "${IGNORED_CLASSES[*]}")
 export LC_ALL=C
 
 if [ "$1" == "proxy" ]; then
-  THE_PID=$(ps axu | grep /usr/share/foreman-proxy/bin/smart-proxy | grep -E '^foreman' | awk '{print $2}')
+  THE_PID=$(ps axu | grep /usr/share/foreman-proxy/bin/smart-proxy | grep -E '^foreman' | awk '{print $2}' | head -n1)
 elif [ "$1" == "rails" -o "$1" == "foreman" -o -z "$1" ]; then
-  THE_PID=$(ps axu | grep "Passenger RackApp: /usr/share/foreman" | grep -E '^foreman' | awk '{print $2}')
+  THE_PID=$(ps axu | grep "Passenger RackApp: /usr/share/foreman" | grep -E '^foreman' | awk '{print $2}' | head -n1)
 else
   THE_PID=$1
 fi

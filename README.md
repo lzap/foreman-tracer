@@ -5,9 +5,20 @@
 * Foreman or Satellite
 * SystemTap enabled kernel (tested on CentOS 7/RHEL 7)
 
-## Usage
+## Installation
 
     yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
+
+## Usage
+
+    foreman-tracer [rails|proxy|PID] [trace|calls|objects|arrays] [app|all] [25]
+
+Options:
+
+* target process (must be Ruby)
+* script to compile and run
+* filtering (only files in `/usr/share/foreman*` or everything)
+* entries per page (defaults to 25)
 
 ### Tracing of calls
 
@@ -163,15 +174,32 @@ installs GNU C/C++ compiler which can be considered as a security risk:
 
 ## Troubleshooting
 
+### Multiple worker processes
+
+Foreman (or Passenger) is configured to run 6 number or worker processes, this
+is by default shared between Foreman Rails app and Puppet Master. Production
+instances likely run more Foreman Rails processes and the foreman-tracer
+utility is capable of connecting to only single process. Since Passenger
+distributes multiple requests among these worked processes, statistics will
+not include all requests.
+
+If possible, configure Passenger with maximum of one process per application
+in order to get most accurate results:
+
+    echo "PassengerMaxInstancesPerApp 1" >> /etc/httpd/conf.d/passenger.conf
+    systemctl restart httpd
+
+Production under heavy load do not usually need to be reconfigured, but the
+absolute numbers from the statistics might not be accurate when compared to
+number of requests.
+
+### Software collections
+
 Ruby SCL is hardcoded in the script, some older version of Foreman (or
 Satellite) have different Foreman/Ruby SCL. This can be determined with:
 
     # grep Ruby /etc/httpd/conf.d/05-foreman.conf
     PassengerRuby /usr/bin/tfm-ruby
-
-The trace script can sometimes pick wrong Passenger process if there are more
-than one. In that case, specify PID manually or configure Passanger with just
-one process for the tracing session.
 
 ## TODO
 
