@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 #
 # Usage:
-# foreman-tracer [rails|proxy|PID_OF_RUBY_PROCESS] [trace|calls|objects|arrays]
+# foreman-tracer [rails|proxy|PID_OF_RUBY_PROCESS] [trace|calls|objects|arrays] [app|all]
 
 SCL="scl enable rh-ruby22 --"
 REFRESH=1000
@@ -32,7 +32,6 @@ Class
 Thread
 Mutex
 IO)
-IGNORED_DIR=/usr/share/foreman
 IGNORED_CLASSES_REGEXP=$(IFS=$'|'; echo "${IGNORED_CLASSES[*]}")
 export LC_ALL=C
 
@@ -42,6 +41,12 @@ elif [ "$1" == "rails" -o "$1" == "foreman" -o -z "$1" ]; then
   THE_PID=$(ps axu | grep "Passenger RackApp: /usr/share/foreman" | grep -E '^foreman' | awk '{print $2}')
 else
   THE_PID=$1
+fi
+
+if [ "$3" == "all" ]; then
+  TRACE_ROOT=/
+else
+  TRACE_ROOT=/usr/share/foreman
 fi
 
 if [ "$2" == "trace" -o -z "$2" ]; then
@@ -54,13 +59,13 @@ if [ "$2" == "trace" -o -z "$2" ]; then
   $SCL stap - -x $THE_PID <<-EOSTAP
   probe ruby.method.entry, ruby.cmethod.entry
   {
-    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
       printf("%s.%s\n", classname, methodname)
     }
   }
   probe ruby.raise
   {
-    if (file =~ "^$IGNORED_DIR") {
+    if (file =~ "^$TRACE_ROOT") {
       printf("EXCEPTION %s (%s:%d)\n", classname, file, line)
     }
   }
@@ -70,7 +75,7 @@ elif [ "$2" == "calls" ]; then
   global fn_calls
   probe ruby.method.entry, ruby.cmethod.entry
   {
-    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
       fn_calls[file, methodname, line] <<< 1
     }
   }
@@ -90,7 +95,7 @@ elif [ "$2" == "strings" ]; then
   global fn_calls
   probe ruby.string.create
   {
-    if (file =~ "^$IGNORED_DIR") {
+    if (file =~ "^$TRACE_ROOT") {
       fn_calls[file, line] <<< 1
     }
   }
@@ -110,7 +115,7 @@ elif [ "$2" == "arrays" ]; then
   global fn_calls
   probe ruby.array.create, ruby.hash.create
   {
-    if (file =~ "^$IGNORED_DIR") {
+    if (file =~ "^$TRACE_ROOT") {
       fn_calls[file, line] <<< 1
     }
   }
@@ -130,7 +135,7 @@ elif [ "$2" == "objects" ]; then
   global fn_calls
   probe ruby.object.create
   {
-    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
       fn_calls[file, classname, line] <<< 1
     }
   }
@@ -150,7 +155,7 @@ elif [ "$2" == "objects-total" ]; then
   global fn_calls
   probe ruby.object.create
   {
-    if (file =~ "^$IGNORED_DIR" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
+    if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
       fn_calls[classname] <<< 1
     }
   }
