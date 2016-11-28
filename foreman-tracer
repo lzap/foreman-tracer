@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 
 SCL="scl enable rh-ruby22 --"
+STAP="stap -v"
 REFRESH=1000
 CLEAR=300000
 PERPAGE=${4:-25}
@@ -63,7 +64,7 @@ if [ "$2" == "trace" -o -z "$2" ]; then
   }
   trap tracing_end EXIT
 
-  $SCL stap - -x $THE_PID <<-EOSTAP
+  $SCL $STAP - -x $THE_PID <<-EOSTAP
   probe ruby.method.entry, ruby.cmethod.entry
   {
     if (file =~ "^$TRACE_ROOT" && classname !~ "^($IGNORED_CLASSES_REGEXP)$") {
@@ -77,8 +78,46 @@ if [ "$2" == "trace" -o -z "$2" ]; then
     }
   }
 EOSTAP
+elif [ "$2" == "time" ]; then
+  $SCL $STAP -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+$FUNCTIONS
+  global stime, elapsed
+  probe ruby.method.entry, ruby.cmethod.entry
+  {
+    if (file =~ "^$TRACE_ROOT") {
+      t = gettimeofday_us()
+      stime[tid() in stime] = t
+    }
+  }
+  probe ruby.method.return, ruby.cmethod.return
+  {
+    if (file =~ "^$TRACE_ROOT") {
+      st = stime[tid() in stime]
+      if (st) {
+        t = gettimeofday_us()
+        e = t - st
+        elapsed[file, methodname, line] <<< e
+        delete stime[tid() in stime]
+      }
+    }
+  }
+  probe timer.ms($REFRESH) {
+    ansi_clear_screen()
+    printf("%80s %6s %30s %6s\n", "FILENAME", "LINE", "METHOD", "TIME")
+    foreach ([filename, funcname, lineno] in elapsed @sum - limit $PERPAGE) {
+      printf("%80s %6d %30s %6d\n",
+        fmtstr(filename, 80),
+        lineno,
+        fmtstr(funcname, 30),
+        @sum(elapsed[filename, funcname, lineno]))
+    }
+  }
+  probe timer.ms($CLEAR) {
+    delete elapsed
+  }
+EOSTAPTOP
 elif [ "$2" == "calls" ]; then
-  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  $SCL $STAP -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
 $FUNCTIONS
   global fn_calls
   probe ruby.method.entry, ruby.cmethod.entry
@@ -103,7 +142,7 @@ $FUNCTIONS
   }
 EOSTAPTOP
 elif [ "$2" == "strings" ]; then
-  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  $SCL $STAP -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
 $FUNCTIONS
   global fn_calls
   probe ruby.string.create
@@ -127,7 +166,7 @@ $FUNCTIONS
   }
 EOSTAPTOP
 elif [ "$2" == "arrays" ]; then
-  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  $SCL $STAP -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
 $FUNCTIONS
   global fn_calls
   probe ruby.array.create, ruby.hash.create
@@ -151,7 +190,7 @@ $FUNCTIONS
   }
 EOSTAPTOP
 elif [ "$2" == "objects" ]; then
-  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  $SCL $STAP -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
 $FUNCTIONS
   global fn_calls
   probe ruby.object.create
@@ -176,7 +215,7 @@ $FUNCTIONS
   }
 EOSTAPTOP
 elif [ "$2" == "objects-total" ]; then
-  $SCL stap -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
+  $SCL $STAP -DMAXMAPENTRIES=$MAXENTRIES - -x $THE_PID <<-EOSTAPTOP
 $FUNCTIONS
   global fn_calls
   probe ruby.object.create

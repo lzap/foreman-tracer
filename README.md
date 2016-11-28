@@ -88,6 +88,12 @@ counters for all namespaces, simply provide "all" option:
 
     foreman-tracer rails calls all
 
+### Time spent
+
+To list top methods with most time spent, use:
+
+    foreman-tracer rails time [all]
+
 ### Top object allocations
 
     foreman-tracer rails objects-total [all]
