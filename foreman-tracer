@@ -1,7 +1,8 @@
 #!/usr/bin/bash
 
-SCL="scl enable rh-ruby22 --"
-STAP="stap -v"
+SCL=""
+#SCL="scl enable rh-ruby22 --"
+STAP="stap -v --skip-badvars"
 REFRESH=1000
 CLEAR=300000
 PERPAGE=${4:-25}
