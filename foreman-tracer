@@ -48,6 +48,9 @@ else
   TRACE_ROOT=/usr/share/foreman
 fi
 
+# fix for https://bugzilla.redhat.com/show_bug.cgi?id=1418296
+sed -i 's/user_string(/user_string_warn(/' /usr/share/systemtap/tapset/libruby.so.*.stp /opt/rh/rh-ruby22/root/usr/share/systemtap/tapset/libruby.so.*.stp
+
 read -r -d '' FUNCTIONS << EOFUNC
   function fmtstr(str, len) {
     if (strlen(str) > len) {

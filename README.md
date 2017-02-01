@@ -180,6 +180,21 @@ installs GNU C/C++ compiler which can be considered as a security risk:
 
 ## Troubleshooting
 
+### Error near identifier user_string_n
+
+Full error: user string copy fault -14 at 0000000001a9e310 [man error::fault] near
+identifier 'user_string_n' at /usr/share/systemtap/tapset/uconversions.stp.
+
+You need to change user_string to user_string_warn in libruby.stp file. For RH
+SCL this is located at:
+
+    /opt/rh/rh-ruby22/root/usr/share/systemtap/tapset/libruby.so.2.2.stp
+
+Bugzilla for Fedora was raised:
+https://bugzilla.redhat.com/show_bug.cgi?id=1418296
+
+The script will make the change for you automatically.
+
 ### Multiple worker processes
 
 Foreman (or Passenger) is configured to run 6 number or worker processes, this
