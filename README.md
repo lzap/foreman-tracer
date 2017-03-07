@@ -5,6 +5,9 @@
 * Foreman or Satellite
 * SystemTap enabled kernel (tested on CentOS 7/RHEL 7)
 
+This will not use with custom Ruby binaries like rvm/rbenv! Fedora or RHEL or
+SCL Ruby with SystemTap patches are required.
+
 ## Installation
 
     yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
