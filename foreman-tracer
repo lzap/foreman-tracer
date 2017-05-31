@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
-SCL=""
-#SCL="scl enable rh-ruby22 --"
+#SCL=""
+SCL="scl enable rh-ruby22 --"
 STAP="stap -v --skip-badvars"
 REFRESH=1000
 CLEAR=300000
@@ -45,7 +45,7 @@ fi
 if [ "$3" == "all" ]; then
   TRACE_ROOT=/
 else
-  TRACE_ROOT=/usr/share/foreman
+  TRACE_ROOT="/usr/share/foreman|/opt/theforeman/tfm/root/usr/share/gems/gems/foreman|/opt/theforeman/tfm/root/usr/share/gems/gems/dynflow"
 fi
 
 # fix for https://bugzilla.redhat.com/show_bug.cgi?id=1418296
