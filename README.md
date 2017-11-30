@@ -10,7 +10,7 @@ SCL Ruby with SystemTap patches are required.
 
 ## Installation
 
-    yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
+    yum -y install gcc systemtap systemtap-runtime kernel-devel-`uname -r`
 
 ## Usage
 
