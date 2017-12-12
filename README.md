@@ -10,7 +10,10 @@ SCL Ruby with SystemTap patches are required.
 
 ## Installation
 
-    yum -y install systemtap systemtap-runtime kernel-devel-`uname -r`
+    yum -y gcc install systemtap systemtap-runtime kernel-devel-`uname -r`
+    
+    Create foreman-tracer script with: 
+    curl -k https://raw.githubusercontent.com/lzap/foreman-tracer/master/foreman-tracer -o /usr/local/bin/foreman-tracer
 
 ## Usage
 
